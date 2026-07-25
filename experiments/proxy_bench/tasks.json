@@ -1,0 +1,82 @@
+[
+  {
+    "id": "syntax_001",
+    "type": "syntax",
+    "description": "Fix a syntax error in a complex ETL SQL script that joins multiple tables for sales reporting.",
+    "buggy_sql": "SELECT t1.region, t2.product_name, SUM(t3.amount) as total_sales\nFROM sales.transactions t1\nJOIN products.catalog t2 ON t1.product_id = t2.id\nLEFT JOIN finance.revenue t3 ON t1.transaction_id = t3.transaction_id\nWHERE t1.date BETWEEN '2024-01-01' AND '2024-12-31'\nGROUP BY t1.region, t2.product_name\nHAVING SUM(t3.amount) > 10000\nORDER BY total_sales DESC\n\nSELECT * FROM (\n  SELECT region, product_name, total_sales,\n    RANK() OVER (PARTITION BY region ORDER BY total_sales DESC) as rank\n  FROM (\n    SELECT t1.region, t2.product_name, SUM(t3.amount) as total_sales\n    FROM sales.transactions t1\n    JOIN products.catalog t2 ON t1.product_id = t2.id\n    LEFT JOIN finance.revenue t3 ON t1.transaction_id = t3.transaction_id\n    WHERE t1.date BETWEEN '2024-01-01' AND '2024-12-31'\n    GROUP BY t1.region, t2.product_name\n    HAVING SUM(t3.amount) > 10000\n  ) ranked_sales\n  WHERE rank <= 5\n) top_sales_by_region\nORDER BY region, total_sales DESC;",
+    "fixed_sql": "SELECT * FROM (\n  SELECT region, product_name, total_sales,\n    RANK() OVER (PARTITION BY region ORDER BY total_sales DESC) as rank\n  FROM (\n    SELECT t1.region, t2.product_name, SUM(t3.amount) as total_sales\n    FROM sales.transactions t1\n    JOIN products.catalog t2 ON t1.product_id = t2.id\n    LEFT JOIN finance.revenue t3 ON t1.transaction_id = t3.transaction_id\n    WHERE t1.date BETWEEN '2024-01-01' AND '2024-12-31'\n    GROUP BY t1.region, t2.product_name\n    HAVING SUM(t3.amount) > 10000\n  ) ranked_sales\n  WHERE rank <= 5\n) top_sales_by_region\nORDER BY region, total_sales DESC;",
+    "error_message": "ERROR: syntax error at or near SELECT at line 12"
+  },
+  {
+    "id": "syntax_002",
+    "type": "syntax",
+    "description": "Fix a missing comma in a multi-table join for customer segmentation.",
+    "buggy_sql": "WITH customer_metrics AS (\n  SELECT\n    c.customer_id,\n    c.customer_name,\n    c.segment,\n    COUNT(DISTINCT o.order_id) as order_count,\n    SUM(o.total_amount) as lifetime_value\n  FROM customers c\n  LEFT JOIN orders o ON c.customer_id = o.customer_id\n  GROUP BY c.customer_id, c.customer_name, c.segment\n)\nSELECT\n  customer_id,\n  customer_name,\n  lifetime_value,\n  NTILE(4) OVER (ORDER BY lifetime_value DESC) as value_quartile\nFROM customer_metrics\nORDER BY lifetime_value DESC;",
+    "fixed_sql": "WITH customer_metrics AS (\n  SELECT\n    c.customer_id,\n    c.customer_name,\n    c.segment,\n    COUNT(DISTINCT o.order_id) as order_count,\n    SUM(o.total_amount) as lifetime_value\n  FROM customers c\n  LEFT JOIN orders o ON c.customer_id = o.customer_id\n  GROUP BY c.customer_id, c.customer_name, c.segment\n)\nSELECT\n  customer_id,\n  customer_name,\n  lifetime_value,\n  NTILE(4) OVER (ORDER BY lifetime_value DESC) as value_quartile\nFROM customer_metrics\nORDER BY lifetime_value DESC;",
+    "error_message": "ERROR: missing comma after c.segment in SELECT list"
+  },
+  {
+    "id": "syntax_003",
+    "type": "syntax",
+    "description": "Fix an unmatched parenthesis in a nested subquery for financial reporting.",
+    "buggy_sql": "SELECT\n  fiscal_year,\n  quarter,\n  department,\n  SUM(revenue) as total_revenue,\n  SUM(costs) as total_costs,\n  ROUND(SUM(revenue) - SUM(costs)) / SUM(revenue) * 100, 2) as profit_margin_pct\nFROM finance.departmental_reports\nWHERE fiscal_year >= 2022\nGROUP BY fiscal_year, quarter, department\nHAVING SUM(revenue) > 100000\nORDER BY fiscal_year ASC, profit_margin_pct DESC;",
+    "fixed_sql": "SELECT\n  fiscal_year,\n  quarter,\n  department,\n  SUM(revenue) as total_revenue,\n  SUM(costs) as total_costs,\n  ROUND((SUM(revenue) - SUM(costs)) / SUM(revenue) * 100, 2) as profit_margin_pct\nFROM finance.departmental_reports\nWHERE fiscal_year >= 2022\nGROUP BY fiscal_year, quarter, department\nHAVING SUM(revenue) > 100000\nORDER BY fiscal_year ASC, profit_margin_pct DESC;",
+    "error_message": "ERROR: syntax error at or near right-parenthesis at line 7"
+  },
+  {
+    "id": "syntax_004",
+    "type": "syntax",
+    "description": "Fix missing GROUP BY columns in a complex aggregation query.",
+    "buggy_sql": "SELECT\n  p.category,\n  p.subcategory,\n  COUNT(DISTINCT o.order_id) as order_count,\n  SUM(oi.quantity * oi.unit_price) as gross_revenue\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE o.order_date >= '2024-01-01'\nGROUP BY p.category\nORDER BY gross_revenue DESC;",
+    "fixed_sql": "SELECT\n  p.category,\n  p.subcategory,\n  COUNT(DISTINCT o.order_id) as order_count,\n  SUM(oi.quantity * oi.unit_price) as gross_revenue\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE o.order_date >= '2024-01-01'\nGROUP BY p.category, p.subcategory\nORDER BY gross_revenue DESC;",
+    "error_message": "ERROR: column p.subcategory must appear in GROUP BY clause"
+  },
+  {
+    "id": "syntax_005",
+    "type": "syntax",
+    "description": "Fix a missing semicolon between CREATE TABLE and SELECT statements.",
+    "buggy_sql": "CREATE TEMPORARY TABLE temp_revenue AS\nSELECT\n  r.region_name,\n  SUM(t.amount) as monthly_revenue\nFROM transactions t\nJOIN regions r ON t.region_id = r.region_id\nGROUP BY r.region_name\n\nSELECT * FROM temp_revenue WHERE monthly_revenue > 10000;",
+    "fixed_sql": "CREATE TEMPORARY TABLE temp_revenue AS\nSELECT\n  r.region_name,\n  SUM(t.amount) as monthly_revenue\nFROM transactions t\nJOIN regions r ON t.region_id = r.region_id\nGROUP BY r.region_name;\n\nSELECT * FROM temp_revenue WHERE monthly_revenue > 10000;",
+    "error_message": "ERROR: missing semicolon between CREATE TABLE and SELECT statements"
+  },
+  {
+    "id": "semantic_001",
+    "type": "semantic",
+    "description": "Fix a semantic error where revenue calculation double-counts due to join multiplication.",
+    "buggy_sql": "SELECT\n  c.customer_id,\n  c.customer_name,\n  COUNT(DISTINCT o.order_id) as total_orders,\n  SUM(oi.quantity * oi.unit_price) as total_spent\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nJOIN order_items oi ON o.order_id = oi.order_id\nGROUP BY c.customer_id, c.customer_name\nORDER BY total_spent DESC;",
+    "fixed_sql": "SELECT\n  c.customer_id,\n  c.customer_name,\n  COUNT(DISTINCT o.order_id) as total_orders,\n  o_agg.total_spent\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nJOIN (\n  SELECT customer_id, SUM(order_total) as total_spent\n  FROM orders\n  GROUP BY customer_id\n) o_agg ON c.customer_id = o_agg.customer_id\nGROUP BY c.customer_id, c.customer_name, o_agg.total_spent\nORDER BY total_spent DESC;",
+    "error_message": "total_spent is inflated because SUM over a join multiplies order totals by the number of items per order"
+  },
+  {
+    "id": "semantic_002",
+    "type": "semantic",
+    "description": "Fix a semantic error where the query counts orders instead of unique products sold per region.",
+    "buggy_sql": "SELECT\n  r.region_name,\n  p.product_category,\n  COUNT(o.order_id) as products_sold,\n  SUM(oi.quantity * oi.unit_price) as revenue\nFROM orders o\nJOIN regions r ON o.region_id = r.region_id\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nGROUP BY r.region_name, p.product_category\nORDER BY revenue DESC;",
+    "fixed_sql": "SELECT\n  r.region_name,\n  p.product_category,\n  COUNT(DISTINCT oi.product_id) as products_sold,\n  SUM(oi.quantity * oi.unit_price) as revenue\nFROM orders o\nJOIN regions r ON o.region_id = r.region_id\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nGROUP BY r.region_name, p.product_category\nORDER BY revenue DESC;",
+    "error_message": "products_sold counts order line items instead of unique products"
+  },
+  {
+    "id": "semantic_003",
+    "type": "semantic",
+    "description": "Fix a semantic error where division by zero is possible in revenue per customer calculation.",
+    "buggy_sql": "SELECT\n  DATE_TRUNC('month', order_date) as month,\n  COUNT(DISTINCT order_id) as monthly_orders,\n  SUM(order_total) as monthly_revenue,\n  ROUND(SUM(order_total) / COUNT(DISTINCT customer_id), 2) as revenue_per_customer\nFROM orders\nGROUP BY DATE_TRUNC('month', order_date)\nORDER BY month DESC;",
+    "fixed_sql": "SELECT\n  DATE_TRUNC('month', order_date) as month,\n  COUNT(DISTINCT order_id) as monthly_orders,\n  SUM(order_total) as monthly_revenue,\n  ROUND(SUM(order_total) / NULLIF(COUNT(DISTINCT customer_id), 0), 2) as revenue_per_customer\nFROM orders\nGROUP BY DATE_TRUNC('month', order_date)\nORDER BY month DESC;",
+    "error_message": "Division by zero possible when no customers in a month"
+  },
+  {
+    "id": "semantic_004",
+    "type": "semantic",
+    "description": "Fix a semantic error where growth rate calculation does not handle NULL or zero previous month revenue.",
+    "buggy_sql": "WITH monthly_stats AS (\n  SELECT\n    DATE_TRUNC('month', order_date) as month,\n    SUM(order_total) as revenue\n  FROM orders\n  GROUP BY DATE_TRUNC('month', order_date)\n)\nSELECT\n  curr.month,\n  curr.revenue as current_revenue,\n  ROUND((curr.revenue - prev.revenue) / prev.revenue * 100, 2) as growth_rate_pct\nFROM monthly_stats curr\nLEFT JOIN monthly_stats prev ON curr.month = DATEADD(month, 1, prev.month)\nORDER BY curr.month ASC;",
+    "fixed_sql": "WITH monthly_stats AS (\n  SELECT\n    DATE_TRUNC('month', order_date) as month,\n    SUM(order_total) as revenue\n  FROM orders\n  GROUP BY DATE_TRUNC('month', order_date)\n)\nSELECT\n  curr.month,\n  curr.revenue as current_revenue,\n  CASE\n    WHEN prev.revenue IS NULL OR prev.revenue = 0 THEN NULL\n    ELSE ROUND((curr.revenue - prev.revenue) / prev.revenue * 100, 2)\n  END as growth_rate_pct\nFROM monthly_stats curr\nLEFT JOIN monthly_stats prev ON curr.month = DATEADD(month, 1, prev.month)\nORDER BY curr.month ASC;",
+    "error_message": "Growth rate calculation does not handle NULL or zero revenue from previous month"
+  },
+  {
+    "id": "semantic_005",
+    "type": "semantic",
+    "description": "Fix a semantic error where window function scope incorrectly partitions the running total.",
+    "buggy_sql": "SELECT\n  employee_id,\n  employee_name,\n  department,\n  salary,\n  RANK() OVER (PARTITION BY department ORDER BY salary DESC) as dept_salary_rank,\n  SUM(salary) OVER (PARTITION BY department ORDER BY hire_date) as running_dept_salary\nFROM employees\nWHERE employment_status = 'Active'\nORDER BY department, salary DESC;",
+    "fixed_sql": "SELECT\n  employee_id,\n  employee_name,\n  department,\n  salary,\n  DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) as dept_salary_rank,\n  SUM(salary) OVER (PARTITION BY department ORDER BY hire_date ROWS UNBOUNDED PRECEDING) as running_dept_salary\nFROM employees\nWHERE employment_status = 'Active'\nORDER BY department, salary DESC;",
+    "error_message": "SUM window without ROWS clause gives wrong running total; RANK creates gaps with ties"
+  }
+]

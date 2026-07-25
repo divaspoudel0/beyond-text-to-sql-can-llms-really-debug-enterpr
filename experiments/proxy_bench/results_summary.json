@@ -1,0 +1,9 @@
+{
+  "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "benchmark": "proxy_10_tasks",
+  "squirrel_syntax_gm": 99.31,
+  "squirrel_semantic_gm": 52.40,
+  "paper_claude4_sonnet_syntax_gm": 36.46,
+  "paper_claude4_sonnet_semantic_gm": 32.17,
+  "notes": "Proxy benchmark tasks are simpler than real Squirrel Benchmark (985 tasks). Higher scores expected."
+}
